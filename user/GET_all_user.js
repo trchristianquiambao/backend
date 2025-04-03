@@ -63,7 +63,6 @@ exports.GET_all_user = (req, res, _dbConnection) => {
       };
     }
 
-    // Send the response
     res.status(resp.status === "200" ? 200 : 204).send(resp);
   });
 };
