@@ -1,40 +1,23 @@
 exports.GET_user = (req, res, _dbConnection) => {
-  //initialize database connection
-  dbConnection = _dbConnection;
+  const dbConnection = _dbConnection;
+  let resp;
 
-  //initialize response
-  var resp;
-
-  //fetch userId in parameter this will fetch an userId parameter in the url
-  var params = {
+  const params = {
     userId: req.params.userId,
   };
 
-  //getUser fn
-  //-------------
   const getUser = (params, callback) => {
-    //declare userId
-    var userId = params.userId;
+    const userId = params.userId;
+    const sql = "SELECT * FROM user_tbl WHERE user_isdel = 0 AND user_id = ?";
 
-    //sql command
-    //this will search for the user with the id that we pass
-    var sql =
-      "SELECT * FROM user_tbl WHERE user_isdel = 0 AND user_id = " + userId;
-
-    //executing sql
-    dbConnection.query(sql, function (err, recordset) {
-      //check error on fetching
+    dbConnection.query(sql, [userId], (err, recordset) => {
       if (err) {
-        console.log("error: getUser Error : " + err);
+        console.log("getUser Error:", err);
         callback(err, null);
       }
 
-      //initalize userResponse
-      var userRes = null;
-
-      //check if there's record
+      let userRes = null;
       if (recordset.length !== 0) {
-        //this will save the first recordset to the userRes object
         userRes = {
           user_id: recordset[0].user_id,
           user_fname: recordset[0].user_fname,
@@ -43,30 +26,25 @@ exports.GET_user = (req, res, _dbConnection) => {
         };
       }
 
-      //return userRes object
       callback(null, userRes);
     });
   };
 
-  //Call get user fn
   getUser(params, (err, user) => {
-    //if the callback returns an err, the server will display error
     if (err) {
-      let err = {};
-      err.status = "500";
-      err.message = "Internal Server Error";
-      res.send(err);
+      const error = {
+        status: "500",
+        message: "Internal Server Error",
+      };
+      return res.status(500).send(error);
     }
 
-    //check if there's fetched data
     if (user !== null) {
       resp = { status: "200", user: user };
     } else {
-      //else if empty
       resp = { status: "204", message: "No Data Available!" };
     }
 
-    //send response
-    res.send(resp);
+    res.status(resp.status === "200" ? 200 : 204).send(resp);
   });
 };

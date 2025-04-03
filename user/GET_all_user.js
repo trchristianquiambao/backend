@@ -1,62 +1,69 @@
 exports.GET_all_user = (req, res, _dbConnection) => {
-  //initialize database connection
-  dbConnection = _dbConnection;
+  const dbConnection = _dbConnection;
 
-  //initialize response
-  var resp;
+  let resp;
 
-  const getAllUser = (callback) => {
-    // this sql command calls all the USER in the table user_tbl where the user_isdel
-    // field is equal (=) to 0
-    var sql = "SELECT * FROM user_tbl WHERE user_isdel = 0";
+  const getAllUser = (page, limit, sortBy, callback) => {
+    const sortField = sortBy || "user_fname";
+    const offset = (page - 1) * limit;
 
-    //executing sql
-    dbConnection.query(sql, (err, recordset) => {
-      //check error on fetching
+    const sql = `
+      SELECT * FROM user_tbl 
+      WHERE user_isdel = 0
+      ORDER BY ${sortField} ASC
+      LIMIT ? OFFSET ?`;
+
+    dbConnection.query(sql, [limit, offset], (err, recordset) => {
       if (err) {
         console.log(err);
         callback(err, null);
       }
 
-      //initialize user list array
-      var allUserList = [];
+      let allUserList = [];
 
-      //loop for each record in user table
-      for (var index in recordset) {
-        //save each record in object
-        var allUser = {
+      for (let index in recordset) {
+        let allUser = {
           user_id: recordset[index].user_id,
           user_fname: recordset[index].user_fname,
           user_lname: recordset[index].user_lname,
         };
 
-        //push record in allUserList array
         allUserList.push(allUser);
       }
 
-      //returns User list
       callback(null, allUserList);
     });
   };
 
-  //Call getAllUser fn
-  getAllUser((err, allUser) => {
-    //check the server
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const sortBy = req.query.sortBy;
+
+  getAllUser(page, limit, sortBy, (err, allUser) => {
     if (err) {
-      let err = {};
-      err.status = "500";
-      err.message = "Internal Server Error";
-      res.send(err);
+      const error = {
+        status: "500",
+        message: "Internal Server Error",
+      };
+      return res.status(500).send(error);
     }
 
-    //check if there's fetched data
     if (allUser.length !== 0) {
-      resp = { status: "200", allUser: allUser };
+      resp = {
+        status: "200",
+        page: page,
+        limit: limit,
+        totalUsers: allUser.length,
+        allUser: allUser,
+      };
     } else {
-      resp = { status: "204", message: "No Data Available!" };
+      resp = {
+        status: "204",
+        message: "No Data Available!",
+      };
     }
 
-    //send response
-    res.send(resp);
+    // Send the response
+    res.status(resp.status === "200" ? 200 : 204).send(resp);
   });
 };
